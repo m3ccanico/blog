@@ -2,9 +2,11 @@
 
 This document describes how to collect analytics data from a LXC container host running LXD through daemon's API and cgroup. The collected data is visualised with [Grafana](https://grafana.com/).
 
+![Dashboard](https://github.com/m3ccanico/blog/tree/master/001/dashboard.png)
+
 # Problem
 
-Without adequate visibility into the resource usage of the containers it is difficult to limit resources for containers, find containers with run-away process, or establish if the current load in a container is normal compared to an established base line (i.e. historic data for the last few weeks).
+Without adequate visibility into the resource usage of the containers, it is difficult to limit resources for them, find containers with run-away processes, or establish resouce baselines.
 
 # Options
 
@@ -14,7 +16,7 @@ Without adequate visibility into the resource usage of the containers it is diff
 lxc info cntr01
 ```
 
-This gives me only a current and very basic view of the ressources used by one container. I cannot compare the resource usage of different containers and cannot see past resource usage.
+This gives me only a current and very basic view of the resources used by one container. I cannot compare the resource usage of different containers and cannot see past resource usage.
 
 Interestingly, the command knows how to map the host network interfaces to the container. 
 
@@ -26,13 +28,13 @@ An alternative to reading `/proc/net/dev` in the host is reading the same file w
 
 ## Telegraf
 
-Telegraf has a cgroup plugin that can read specific values and write the results to InfluxDB. However, Telegraf is not very flexible in they way the data is written. For example, Telegraf will tag the values with the whole path (e.g. `/sys/fs/cgroup/cpu/lxc/cntr01/cpuacct.stat`) which makes legends in corresponding graphs (e.g. in Grafana) harder to read.
+Telegraf has a cgroup plugin that can read specific values and write the results to InfluxDB. However, the cgroup plugin is not very flexible in the way the data is written. For example, it will tag the values with the whole path (e.g. `/sys/fs/cgroup/cpu/lxc/cntr01/cpuacct.stat`) which makes legends in corresponding graphs (e.g. in Grafana) harder to read.
 
 ## LXD REST API
 
-An other option is offered by LXD itself. The daemon has a [REST API](https://github.com/lxc/lxd/blob/master/doc/rest-api.md#10containersnamestate) that provides access to CPU, disk, and memory usage. It also provides the current interface counters. There are existing API clients for Go and Python ([pylxd](https://github.com/lxc/pylxd)).
+Another option is offered by LXD itself. The daemon has a [REST API](https://github.com/lxc/lxd/blob/master/doc/rest-api.md#10containersnamestate) that provides access to CPU, disk, and memory usage. It also provides the current interface counters. There are existing API clients for Go and Python ([pylxd](https://github.com/lxc/pylxd)).
 
-During my test, I've found that pylxd didn't implement the state API. Furhter, I've found that the state API didn't returned the correct CPU counters.
+During my test, I've found that pylxd didn't implement the state API. Further, I've found that the state API didn't returned the correct CPU counters.
 
 # Design
 
