@@ -2,7 +2,7 @@
 
 This document describes how to collect analytics data from a LXC container host running LXD through daemon's API and cgroup. The collected data is visualised with [Grafana](https://grafana.com/).
 
-![Dashboard](https://github.com/m3ccanico/blog/tree/master/001/dashboard.png)
+![Dashboard](https://github.com/m3ccanico/blog/blob/master/001/dashboard.png)
 
 # Problem
 
