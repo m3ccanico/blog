@@ -42,7 +42,7 @@ The script runs every 10 seconds. For each run it collects the memory and networ
 
 # Implementation
 
-The implementation of the Python scrip can be found here: (lxd2influx)[https://github.com/m3ccanico/lxd2influx].
+The implementation of the Python scrip can be found here: [lxd2influx](https://github.com/m3ccanico/lxd2influx).
 
 ## InfluxDB
 
