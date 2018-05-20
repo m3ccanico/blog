@@ -2,6 +2,8 @@
 
 This document describes how to collect analytics data from JunOS (e.g. interface statistics like bytes received) and visualise them with [Grafana](https://grafana.com/).
 
+I'm using Ubuntu 16.04 running LXD in my lab. Each machine runs as a Ubuntu 16.04 container.
+
 # Overview
 
 The analytics data is sent by the JunOS analytics services. The data is received by the Python script [gpb2influx](https://github.com/m3ccanico/gpb2influx). The script writes the data to InfluxDB. Grafana reads the data from InfluxDB and creates the graphs.
@@ -66,11 +68,11 @@ SELECT * FROM throughput_in LIMIT 5
 
 Go here for [instructions how to install Grafana](https://grafana.com/grafana/download).
 
-* Create variables:
- * Host `SHOW TAG VALUES WITH KEY = "host"`
- * Interface `SHOW TAG VALUES WITH KEY = "interface" WHERE host='$host'`
-* Create graph
- * There is some math required to graph the counters. `NON_NEGATIVE_DERIVATIVE` calculates the rate of change. The result is multiplied by 8 to show bits instead of bytes.
+Create variables:
+* Host `SHOW TAG VALUES WITH KEY = "host"`
+* Interface `SHOW TAG VALUES WITH KEY = "interface" WHERE host='$host'`
+Create graph:
+* There is some math required to graph the counters. `NON_NEGATIVE_DERIVATIVE` calculates the rate of change. The result is multiplied by 8 to show bits instead of bytes.
 
 [Grafana Graph JSON](https://github.com/m3ccanico/blog/blob/master/000/grafana.json)
 
