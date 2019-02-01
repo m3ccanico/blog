@@ -1,0 +1,16 @@
+FROM ubuntu
+ 
+USER root
+
+RUN \
+  sed -i -e 's/archive/nz.archive/' /etc/apt/sources.list && \
+  apt update && \
+  apt upgrade -y
+ 
+RUN apt install -y curl unzip
+RUN curl -o /tmp/terraform_0.11.11_linux_amd64.zip \
+ https://releases.hashicorp.com/terraform/0.11.11/terraform_0.11.11_linux_amd64.zip
+RUN unzip /tmp/terraform_0.11.11_linux_amd64.zip -d /tmp
+RUN mv /tmp/terraform /usr/local/bin
+ 
+WORKDIR /root

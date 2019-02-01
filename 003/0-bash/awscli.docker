@@ -1,0 +1,15 @@
+FROM ubuntu
+ 
+USER root
+
+RUN \
+  sed -i -e 's/archive/nz.archive/' /etc/apt/sources.list && \
+  apt update && \
+  apt upgrade -y
+ 
+RUN \
+  apt install -y vim python-pip && \
+  pip install awscli --upgrade --user && \
+  ln -s /root/.local/bin/aws /usr/local/bin/aws
+
+WORKDIR /root

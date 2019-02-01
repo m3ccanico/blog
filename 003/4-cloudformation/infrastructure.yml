@@ -1,0 +1,243 @@
+Parameters:
+  VpcCidr:
+    Type: String
+    Default: 10.1.0.0/16
+  LabName:
+    Type: String
+    Default: cloudformation
+  Region:
+    Type: String
+    Default: ap-southeast-2
+  SshKeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: aws-lab00
+  MyPublicIp:
+    Type: String
+    Default: 128.66.0.1/32
+  Ami:
+    Type: AWS::EC2::Image::Id
+    Default: ami-07a3bd4944eb120a0
+
+Resources:
+  MyVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub vpc-${LabName}
+
+  MyIgw:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub igw-${LabName}
+  
+  MyIgwAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref MyIgw
+      VpcId: !Ref MyVpc
+  
+  MyNetFeA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVpc
+      AvailabilityZone: !Sub ${Region}a
+      CidrBlock: "10.1.0.0/24"
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name 
+          Value: !Sub net-${LabName}-fe-a
+  
+  MyNetFeB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVpc
+      AvailabilityZone: !Sub ${Region}b
+      CidrBlock: "10.1.1.0/24"
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name 
+          Value: !Sub net-${LabName}-fe-b
+  
+  MyNetBeA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVpc
+      AvailabilityZone: !Sub ${Region}a
+      CidrBlock: "10.1.16.0/24"
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name 
+          Value: !Sub net-${LabName}-be-a
+  
+  MyNetBeB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVpc
+      AvailabilityZone: !Sub ${Region}b
+      CidrBlock: "10.1.17.0/24"
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name 
+          Value: !Sub net-${LabName}-be-b
+  
+  MyRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name 
+          Value: !Sub rtb-${LabName}
+  
+  DefaultRoute: 
+    Type: AWS::EC2::Route
+    Properties: 
+      RouteTableId: !Ref MyRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyIgw
+  
+  MyNetFeARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref MyRouteTable
+      SubnetId: !Ref MyNetFeA
+  
+  MyNetFeBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref MyRouteTable
+      SubnetId: !Ref MyNetFeB
+  
+  MyNetBeARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref MyRouteTable
+      SubnetId: !Ref MyNetBeA
+  
+  MyNetBeBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref MyRouteTable
+      SubnetId: !Ref MyNetBeB
+    
+  AllowAdmin:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref MyVpc
+      GroupName: !Sub ${LabName}-admin
+      GroupDescription: "Admin access"
+  
+  AllowSshIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref AllowAdmin
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: !Ref MyPublicIp
+  
+  AllowIcmpIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref AllowAdmin
+      IpProtocol: icmp
+      FromPort: 8
+      ToPort: -1
+      CidrIp: !Ref MyPublicIp
+    
+  AllowFe:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref MyVpc
+      GroupName: !Sub ${LabName}-fe
+      GroupDescription: "Frontend access"
+    
+  AllowBe:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref MyVpc
+      GroupName: !Sub ${LabName}-be
+      GroupDescription: "Backend access"
+  
+  AllowFrontendToBackend:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties: 
+      GroupId: !Ref AllowBe
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref AllowFe
+
+  MyInstanceFeA:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref Ami
+      InstanceType: t2.micro
+      AvailabilityZone: !Sub ${Region}a
+      KeyName: !Ref SshKeyName
+      NetworkInterfaces: 
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          SubnetId: !Ref MyNetFeA
+          GroupSet: 
+            - !Ref AllowAdmin
+            - !Ref AllowFe
+      Tags:
+        - Key: Name
+          Value: !Sub ins-${LabName}-fe-a
+
+  MyInstanceFeB:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref Ami
+      InstanceType: t2.micro
+      AvailabilityZone: !Sub ${Region}b
+      KeyName: !Ref SshKeyName
+      NetworkInterfaces: 
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          SubnetId: !Ref MyNetFeB
+          GroupSet: 
+            - !Ref AllowAdmin
+            - !Ref AllowFe
+      Tags:
+        - Key: Name
+          Value: !Sub ins-${LabName}-fe-b
+
+  MyInstanceBeA:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref Ami
+      InstanceType: t2.micro
+      AvailabilityZone: !Sub ${Region}a
+      KeyName: !Ref SshKeyName
+      NetworkInterfaces: 
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          SubnetId: !Ref MyNetBeA
+          GroupSet: 
+            - !Ref AllowAdmin
+            - !Ref AllowBe
+      Tags:
+        - Key: Name
+          Value: !Sub ins-${LabName}-be-a
+
+  MyInstanceBeB:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref Ami
+      InstanceType: t2.micro
+      AvailabilityZone: !Sub ${Region}b
+      KeyName: !Ref SshKeyName
+      NetworkInterfaces: 
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          SubnetId: !Ref MyNetBeB
+          GroupSet: 
+            - !Ref AllowAdmin
+            - !Ref AllowBe
+      Tags:
+        - Key: Name
+          Value: !Sub ins-${LabName}-be-b

@@ -1,0 +1,58 @@
+lab: ansible
+cidr: 10.1.0.0/16
+region: ap-southeast-2
+image: ami-07a3bd4944eb120a0
+ssh_key_name: aws-lab00
+public_src: 128.66.0.1/32
+
+subnets:
+  - name: sn-lab02-fe-a
+    az: a
+    cidr: 10.1.0.0/24
+  - name: sn-lab02-fe-b
+    az: b
+    cidr: 10.1.1.0/24
+  - name: sn-lab02-be-a
+    az: a
+    cidr: 10.1.16.0/24
+  - name: sn-lab02-be-b
+    az: b
+    cidr: 10.1.17.0/24
+
+vpc_security_groups:
+  - name: "{{ lab }}-admin"
+    description: "Admin access"
+    tag: "sg-{{ lab }}-admin"
+    rules:
+      - proto: tcp
+        cidr_ip: "{{ public_src }}"
+        ports:
+          - 22
+  - name: "{{ lab }}-fe"
+    description: "Frontend access"
+    tag: "sg-{{ lab }}-fe"
+    rules: []
+  - name: "{{ lab }}-be"
+    description: "Backend access"
+    rules:
+      - proto: all
+        group_name: "{{ lab }}-fe"
+    tag: "sg-{{ lab }}-be"
+
+instances:
+  - name: "ins-{{ lab }}-fe-a0"
+    az: a
+    assign_public_ip: yes
+    subnet: sn-lab02-fe-a
+  - name: "ins-{{ lab }}-fe-b0"
+    az: b
+    assign_public_ip: yes
+    subnet: sn-lab02-fe-b
+  - name: "ins-{{ lab }}-be-a0"
+    az: a
+    assign_public_ip: no
+    subnet: sn-lab02-be-a
+  - name: "ins-{{ lab }}-be-b0"
+    az: b
+    assign_public_ip: no
+    subnet: sn-lab02-be-b

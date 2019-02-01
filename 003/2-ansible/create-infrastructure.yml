@@ -1,0 +1,92 @@
+---
+- name: Create lab on AWS
+  hosts: aws
+  connection: local
+  gather_facts: no
+  tasks:
+
+    - name: Create VPC
+      ec2_vpc_net:
+        name: "vpc-{{ lab }}"
+        cidr_block: "{{ cidr }}"
+        region: "{{ region }}"
+        dns_hostnames: yes
+      register: create_vpc
+    
+    - name: Create internet gateway
+      ec2_vpc_igw:
+        vpc_id: "{{ create_vpc.vpc.id }}"
+        tags:
+          Name: "igw-{{ lab }}"
+        region: "{{ region }}"
+      register: create_igw
+
+    - name: Create subnets
+      ec2_vpc_subnet:
+        vpc_id: "{{ create_vpc.vpc.id }}"
+        cidr: "{{ item.cidr }}"
+        az: "{{ region }}{{ item.az }}"
+        tags:
+          Name: "{{ item.name }}"
+        region: "{{ region }}"
+      register: create_subnet
+      loop: "{{ subnets }}"
+    
+    # create dictionary subnet_ids what contains <subnet name>: <subnet ID> 
+    # so it can be used later (creating routing table, create EC2 instances)
+    - name: "set fact: subnet IDs"
+      set_fact:
+        subnet_ids: "{{ subnet_ids|default({}) | combine({ item.subnet.tags.Name: item.subnet.id }) }}"
+      loop: "{{ create_subnet.results }}"
+
+    - name: Create route table
+      ec2_vpc_route_table:
+        vpc_id: "{{ create_vpc.vpc.id }}"
+        tags:
+          Name: "rtb-{{ lab }}"
+        subnets: "{{ subnet_ids.values() | list }}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ create_igw.gateway_id }}"
+    
+    - name: Create VPC security groups
+      ec2_group:
+        name: "{{ item.name }}"
+        description: "{{ item.description }}"
+        vpc_id: "{{ create_vpc.vpc.id }}"
+        rules: "{{ item.rules }}"
+        tags:
+          Name: "{{ item.tag }}"
+      register: create_security_groups
+      loop: "{{ vpc_security_groups }}"
+    
+    # create dictionary security_group_ids what contains <security group name>: <security group ID> 
+    # so it can be used later (create EC2 instances)    
+    - name: "set fact: security group IDs"
+      set_fact:
+        security_group_ids: "{{ security_group_ids|default({}) | combine({ item.tags.Name: item.group_id }) }}"
+      loop: "{{ create_security_groups.results }}"
+
+    - name: Create EC2 instance
+      ec2:
+        instance_type: t2.micro
+        instance_tags:
+          Name: "{{ item.name }}"
+        image: "{{ image }}"
+        key_name: "{{ ssh_key_name }}"
+        exact_count: 1
+        count_tag: 
+          Name: "{{ item.name }}"
+        group_id: "{{ security_group_ids.values() | list }}"
+        vpc_subnet_id: "{{ subnet_ids[item.subnet] }}"
+        wait: true
+        region: "{{ region }}"
+        zone: "{{ region }}{{ item.az }}"
+        assign_public_ip: "{{ item.assign_public_ip }}"
+      register: create_ec2
+      loop: "{{ instances }}"
+    
+    - name: "EC2 instances"
+      debug:
+        msg: "{{ create_ec2 }}"
+      
